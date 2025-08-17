@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GastroConnect — Reseñas de Restaurantes</title>
+  <meta name="description" content="Plataforma demo para reseñas de restaurantes locales: búsqueda por tipo de comida y presupuesto, calificaciones con estrellas, fotos y promedio por restaurante." />
+  <style>
+    :root {
+      --brand: #e67e22;
+      --brand-2: #d35400;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --bg: #f7f7fb;
+      --card: #ffffff;
+      --ok: #16a34a;
+      --bad: #ef4444;
+      --radius: 14px;
+      --shadow: 0 10px 30px rgba(0,0,0,.08);
+    }
+    * { box-sizing: border-box }
+    html, body { height: 100% }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--ink); background: var(--bg); line-height: 1.55;
+    }
+    header.hero {
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #fff; padding: 42px 20px 26px; position: sticky; top: 0; z-index: 20;
+      box-shadow: 0 4px 20px rgba(0,0,0,.15);
+    }
+    .hero__inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center }
+    .brand { display:flex; align-items:center; gap:12px }
+    .brand__logo { width: 42px; height: 42px; border-radius: 12px; background:#fff2; display:grid; place-items:center; font-size: 22px }
+    h1 { margin:0; font-size: clamp(22px, 3vw, 30px) }
+    .hero__filters { display:flex; flex-wrap: wrap; gap:10px; justify-content: flex-end }
+    .chip, select, input[type="search"] {
+      background: #fff; color: #111; border: 0; border-radius: 999px; padding: 10px 14px; box-shadow: var(--shadow);
+    }
+    input[type="search"] { min-width: 220px }
+    select { padding-right: 30px }
+    main { max-width:1100px; margin: 26px auto 80px; padding: 0 20px }
+
+    /* Toolbar */
+    .toolbar { display:flex; gap:12px; align-items:center; justify-content: space-between; margin-bottom: 14px }
+    .toolbar__left, .toolbar__right { display:flex; gap:12px; align-items:center }
+    .btn { background: var(--brand); color:#fff; border: 0; border-radius: 12px; padding: 10px 14px; cursor:pointer; box-shadow: var(--shadow); font-weight: 600 }
+    .btn:hover{ background: var(--brand-2) }
+    .btn.secondary { background:#fff; color: var(--ink); border:1px solid #eee }
+
+    /* Grid */
+    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px }
+    .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; display:flex; flex-direction: column }
+    .card__media { position: relative; aspect-ratio: 16/10; background: #ddd; overflow: hidden }
+    .card__media img { width: 100%; height: 100%; object-fit: cover }
+    .badge { position: absolute; bottom:10px; right: 10px; background: #111a; color:#fff; padding: 6px 10px; border-radius: 999px; font-size: 12px }
+    .card__body { padding: 14px }
+    .title { display:flex; justify-content: space-between; gap:8px; align-items:center }
+    .title h3 { margin: 0; font-size: 18px }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px }
+    .stars { color: #f59e0b; letter-spacing: 1px }
+    .price { font-size: 12px; background:#f3f4f6; padding:4px 8px; border-radius: 999px }
+
+    .card__actions { padding: 12px 14px; display:flex; gap:10px; align-items:center; border-top: 1px solid #f1f1f3 }
+    .card__actions .btn { padding: 8px 12px }
+
+    /* Drawer details */
+    .drawer { position: fixed; inset: 0; background: #0006; display:none; place-items: center; padding: 18px }
+    .drawer.open { display:grid }
+    .sheet { width:min(960px, 96vw); max-height: 92vh; background: #fff; border-radius: 16px; box-shadow: var(--shadow); display:grid; grid-template-columns: 1.2fr 1fr }
+    .sheet__media { position: relative }
+    .sheet__media img { width: 100%; height: 100%; object-fit: cover; border-top-left-radius: 16px; border-bottom-left-radius: 16px }
+    .sheet__body { padding: 18px; overflow: auto }
+
+    .row { display:flex; gap: 10px; align-items:center; flex-wrap: wrap }
+    .pill { background:#f3f4f6; padding: 6px 10px; border-radius: 999px; font-size: 12px }
+    .muted { color: var(--muted) }
+
+    /* Reviews */
+    .reviews { margin-top: 12px; display: grid; gap:12px }
+    .review { border: 1px solid #f0f0f2; border-radius: 12px; padding: 12px }
+    .review__meta { display:flex; justify-content: space-between; align-items:center; gap: 10px }
+    .review__user { font-weight: 600 }
+    .review__photo { width: 100%; max-height: 220px; object-fit: cover; border-radius:10px; margin-top: 8px }
+
+    /* Add review form */
+    .form { display:grid; gap:10px; margin-top: 12px }
+    .form input, .form textarea, .form select { padding: 10px 12px; border:1px solid #e5e7eb; border-radius: 10px }
+    .form textarea { resize: vertical; min-height: 90px }
+    .stars-input { display:flex; gap:6px; font-size: 22px; cursor: pointer }
+    .stars-input span { filter: grayscale(.6); opacity:.7 }
+    .stars-input span.active { filter:none; opacity:1 }
+
+    /* Empty state */
+    .empty { text-align:center; color: var(--muted); padding: 18px; border:1px dashed #e5e7eb; border-radius: 12px }
+
+    /* Responsive */
+    @media (max-width: 860px){ .sheet{ grid-template-columns: 1fr } .sheet__media img{ border-radius: 16px 16px 0 0 } }
+  </style>
+</head>
+<body>
+  <header class="hero" role="banner">
+    <div class="hero__inner">
+      <div class="brand" aria-label="GastroConnect">
+        <div class="brand__logo" aria-hidden>🍴</div>
+        <div>
+          <h1>GastroConnect — Reseñas de Restaurantes</h1>
+          <div class="muted" style="font-size:14px">Busca por tipo de comida y presupuesto. Lee reseñas reales, sube fotos y califica con estrellas.</div>
+        </div>
+      </div>
+      <div class="hero__filters" aria-label="Filtros de búsqueda">
+        <input id="q" type="search" placeholder="Buscar restaurante o zona…" aria-label="Buscar" />
+        <select id="filterCuisine" aria-label="Filtrar por tipo de comida">
+          <option value="">Tipo de comida</option>
+          <option>Dominicana</option>
+          <option>Italiana</option>
+          <option>Japonesa</option>
+          <option>Mexicana</option>
+          <option>Vegana</option>
+          <option>Internacional</option>
+        </select>
+        <select id="filterPrice" aria-label="Filtrar por presupuesto">
+          <option value="">Presupuesto</option>
+          <option value="$">Económico ($)</option>
+          <option value="$$">Medio ($$)</option>
+          <option value="$$$">Alto ($$$)</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar" role="region" aria-label="Herramientas">
+      <div class="toolbar__left">
+        <button class="btn secondary" id="clearFilters">Limpiar filtros</button>
+      </div>
+      <div class="toolbar__right">
+        <label class="muted" for="sortBy">Ordenar por</label>
+        <select id="sortBy" class="chip" aria-label="Ordenar por">
+          <option value="rating">Mejor calificados</option>
+          <option value="reviews">Más reseñas</option>
+          <option value="name">Nombre (A–Z)</option>
+        </select>
+      </div>
+    </div>
+
+    <section class="grid" id="cards" aria-live="polite"></section>
+
+    <p class="muted" style="margin-top:16px">Tip: haz clic en un restaurante para ver detalles, reseñas y agregar la tuya.</p>
+  </main>
+
+  <!-- Drawer / Detalle del restaurante -->
+  <div class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="sheet" role="document">
+      <div class="sheet__media">
+        <img id="detailImage" alt="Foto del restaurante" />
+        <div class="badge" id="detailBadge"></div>
+      </div>
+      <div class="sheet__body">
+        <div class="title">
+          <h2 id="detailName" style="margin:0"></h2>
+          <span class="price" id="detailPrice"></span>
+        </div>
+        <div class="subtitle" id="detailCuisine"></div>
+        <div class="row" style="margin-top:8px">
+          <span class="stars" id="detailStars">★★★★★</span>
+          <span class="muted" id="detailMeta"></span>
+        </div>
+
+        <hr style="border:none;border-top:1px solid #eee; margin:14px 0" />
+
+        <h3 style="margin:0 0 6px">Reseñas</h3>
+        <div id="reviewsList" class="reviews"></div>
+        <div id="emptyReviews" class="empty" style="display:none">Aún no hay reseñas. ¡Sé el primero en opinar!</div>
+
+        <hr style="border:none;border-top:1px solid #eee; margin:14px 0" />
+
+        <h3 style="margin:0 0 6px">Agregar reseña</h3>
+        <form id="reviewForm" class="form" autocomplete="off">
+          <div class="row">
+            <input id="reviewUser" placeholder="Tu nombre" required />
+            <div class="stars-input" id="starsInput" aria-label="Seleccionar calificación">
+              <span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span>
+            </div>
+            <input type="hidden" id="reviewRating" value="5" />
+          </div>
+          <textarea id="reviewComment" placeholder="Escribe tu reseña…" required></textarea>
+          <div class="row">
+            <input id="reviewPhoto" type="file" accept="image/*" />
+            <button class="btn" type="submit">Publicar reseña</button>
+            <button class="btn secondary" type="button" id="closeDrawer">Cerrar</button>
+          </div>
+          <small class="muted">Las reseñas se guardan localmente en tu navegador (LocalStorage) para fines académicos.</small>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- Datos base (seed)
+    const seedRestaurants = [
+      { id: 'r1', name: 'La Terraza Colonial', cuisine: 'Dominicana', price: '$$',
+        area: 'Zona Colonial',
+        photo: 'https://images.unsplash.com/photo-1604908553868-9b19d2d9e6e3?q=80&w=1400&auto=format&fit=crop',
+        reviews: [
+          { user: 'María', rating: 5, comment: 'Excelente sazón y servicio rápido.', ts: Date.now()-86400000*4 },
+          { user: 'Luis', rating: 4, comment: 'Buen mofongo, ambiente acogedor.', ts: Date.now()-86400000*2 }
+        ]
+      },
+      { id: 'r2', name: 'Trattoria Bella Vita', cuisine: 'Italiana', price: '$$', area: 'Piantini',
+        photo: 'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1400&auto=format&fit=crop',
+        reviews: [ { user: 'Carla', rating: 5, comment: 'La pasta al dente perfecta.', ts: Date.now()-86400000*6 } ]
+      },
+      { id: 'r3', name: 'Sakura Nikkei', cuisine: 'Japonesa', price: '$$$', area: 'Naco',
+        photo: 'https://images.unsplash.com/photo-1553621042-f6e147245754?q=80&w=1400&auto=format&fit=crop',
+        reviews: [ { user: 'Diego', rating: 4, comment: 'Sushi fresco; un poco caro.', ts: Date.now()-86400000*9 } ]
+      },
+      { id: 'r4', name: 'Taquería El Barrio', cuisine: 'Mexicana', price: '$', area: 'Gazcue',
+        photo: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=1400&auto=format&fit=crop',
+        reviews: []
+      },
+      { id: 'r5', name: 'Green Bowl', cuisine: 'Vegana', price: '$$', area: 'Arroyo Hondo',
+        photo: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=1400&auto=format&fit=crop',
+        reviews: [ { user: 'Ana', rating: 5, comment: 'Opciones veganas creativas y sabrosas.', ts: Date.now()-86400000*1 } ]
+      },
+      { id: 'r6', name: 'Mercado Urbano', cuisine: 'Internacional', price: '$$', area: 'Bella Vista',
+        photo: 'https://images.unsplash.com/photo-1541542684-4a6e6202bdc0?q=80&w=1400&auto=format&fit=crop',
+        reviews: []
+      }
+    ];
+
+    // ---------- Utilidades
+    const $ = (sel, parent=document) => parent.querySelector(sel);
+    const $$ = (sel, parent=document) => [...parent.querySelectorAll(sel)];
+
+    function avgRating(r){
+      if(!r.reviews || r.reviews.length===0) return 0;
+      return r.reviews.reduce((a,b)=>a+b.rating,0)/r.reviews.length;
+    }
+    const starsText = n => '★★★★★☆☆☆☆☆'.slice(5 - Math.round(n), 10 - Math.round(n)); // not used, keeping simple below
+    const formatPrice = p => ({'$':'Económico','$\$':'Medio','$$$':'Alto'}[p] || p);
+
+    // ---------- Persistencia Local
+    const LS_KEY = 'gastroconnect:data:v1';
+    function loadData(){
+      try{ const raw = localStorage.getItem(LS_KEY); if(!raw) return seedRestaurants; const parsed = JSON.parse(raw); return parsed; }catch(e){ return seedRestaurants; }
+    }
+    function saveData(data){ localStorage.setItem(LS_KEY, JSON.stringify(data)); }
+
+    let data = loadData();
+
+    // ---------- Render de tarjetas
+    const cardsEl = $('#cards');
+    function renderCards(){
+      const q = $('#q').value.trim().toLowerCase();
+      const cuisine = $('#filterCuisine').value;
+      const price = $('#filterPrice').value;
+      const sortBy = $('#sortBy').value;
+
+      let items = [...data];
+      if(q){ items = items.filter(r=> (r.name+ ' ' + r.area + ' ' + r.cuisine).toLowerCase().includes(q)); }
+      if(cuisine){ items = items.filter(r=> r.cuisine===cuisine); }
+      if(price){ items = items.filter(r=> r.price===price); }
+
+      items.sort((a,b)=>{
+        if(sortBy==='name') return a.name.localeCompare(b.name);
+        if(sortBy==='reviews') return (b.reviews?.length||0) - (a.reviews?.length||0);
+        return avgRating(b) - avgRating(a);
+      });
+
+      cardsEl.innerHTML = items.map(r=>{
+        const rating = avgRating(r);
+        const starStr = '★★★★★'.slice(0, Math.round(rating)) + '☆☆☆☆☆'.slice(0, 5-Math.round(rating));
+        return `
+          <article class="card" tabindex="0" aria-label="${r.name}" data-id="${r.id}">
+            <div class="card__media">
+              <img src="${r.photo}" alt="${r.name}" loading="lazy" />
+              <span class="badge">${r.area}</span>
+            </div>
+            <div class="card__body">
+              <div class="title">
+                <h3>${r.name}</h3>
+                <span class="price" title="Presupuesto">${r.price}</span>
+              </div>
+              <div class="subtitle">${r.cuisine}</div>
+              <div class="row" style="margin-top:8px">
+                <span class="stars" aria-label="Calificación promedio">${starStr}</span>
+                <span class="muted">(${(rating||0).toFixed(1)}) · ${r.reviews.length} reseña(s)</span>
+              </div>
+            </div>
+            <div class="card__actions">
+              <button class="btn" data-action="open" data-id="${r.id}">Ver detalles</button>
+              <button class="btn secondary" data-action="review" data-id="${r.id}">Escribir reseña</button>
+            </div>
+          </article>`;
+      }).join('');
+    }
+
+    // ---------- Drawer (detalle y reseñas)
+    const drawer = $('#drawer');
+    let currentId = null;
+
+    function openDrawer(id, goToForm=false){
+      const r = data.find(x=>x.id===id); if(!r) return;
+      currentId = id;
+      $('#detailImage').src = r.photo;
+      $('#detailBadge').textContent = r.area;
+      $('#detailName').textContent = r.name;
+      $('#detailPrice').textContent = r.price;
+      $('#detailCuisine').textContent = r.cuisine;
+      const rating = avgRating(r);
+      const starStr = '★★★★★'.slice(0, Math.round(rating)) + '☆☆☆☆☆'.slice(0, 5-Math.round(rating));
+      $('#detailStars').textContent = starStr;
+      $('#detailMeta').textContent = `(${r.reviews.length} reseña${r.reviews.length!==1?'s':''})`;
+
+      renderReviews(r);
+      drawer.classList.add('open');
+      drawer.setAttribute('aria-hidden','false');
+
+      if(goToForm){ setTimeout(()=> $('#reviewUser').focus(), 50); }
+    }
+
+    function closeDrawer(){ drawer.classList.remove('open'); drawer.setAttribute('aria-hidden','true'); currentId = null; }
+    $('#closeDrawer').addEventListener('click', closeDrawer);
+    drawer.addEventListener('click', (e)=>{ if(e.target===drawer) closeDrawer(); });
+    document.addEventListener('keydown', e=>{ if(e.key==='Escape' && drawer.classList.contains('open')) closeDrawer(); });
+
+    function renderReviews(r){
+      const list = $('#reviewsList');
+      if(!r.reviews || r.reviews.length===0){ list.innerHTML=''; $('#emptyReviews').style.display='block'; return; }
+      $('#emptyReviews').style.display='none';
+      list.innerHTML = r.reviews
+        .slice().sort((a,b)=>b.ts-a.ts)
+        .map(rv=>{
+          const stars = '★★★★★'.slice(0, rv.rating) + '☆☆☆☆☆'.slice(0, 5-rv.rating);
+          return `<div class="review">
+            <div class="review__meta"><span class="review__user">${rv.user}</span>
+              <span class="stars">${stars}</span></div>
+            <div class="review__text">${escapeHtml(rv.comment)}</div>
+            ${rv.photo ? `<img class="review__photo" src="${rv.photo}" alt="Foto de reseña" />` : ''}
+          </div>`;
+        }).join('');
+    }
+
+    // ---------- Eventos globales
+    $('#cards').addEventListener('click', (e)=>{
+      const id = e.target.getAttribute('data-id') || e.target.closest('[data-id]')?.getAttribute('data-id');
+      if(!id) return;
+      const action = e.target.getAttribute('data-action');
+      if(action==='review'){ openDrawer(id, true); }
+      else { openDrawer(id); }
+    });
+    $('#cards').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ const id=e.target.getAttribute('data-id'); if(id) openDrawer(id); } });
+
+    $('#q, #filterCuisine, #filterPrice, #sortBy').forEach?.call
+      ? null
+      : null; // placeholder for older browsers
+
+    $('#q').addEventListener('input', renderCards);
+    $('#filterCuisine').addEventListener('change', renderCards);
+    $('#filterPrice').addEventListener('change', renderCards);
+    $('#sortBy').addEventListener('change', renderCards);
+    $('#clearFilters').addEventListener('click', ()=>{ $('#q').value=''; $('#filterCuisine').value=''; $('#filterPrice').value=''; $('#sortBy').value='rating'; renderCards(); });
+
+    // ---------- Form de reseñas
+    const starsInput = $('#starsInput');
+    starsInput.addEventListener('mousemove', handleHoverStars);
+    starsInput.addEventListener('mouseleave', syncStarsFromHidden);
+    starsInput.addEventListener('click', (e)=>{
+      if(e.target.dataset.v){ $('#reviewRating').value = e.target.dataset.v; syncStarsFromHidden(); }
+    });
+
+    function handleHoverStars(e){
+      if(!e.target.dataset.v) return; const n = +e.target.dataset.v; $$('span', starsInput).forEach((s,i)=>{ s.classList.toggle('active', i < n); });
+    }
+    function syncStarsFromHidden(){ const n = +$('#reviewRating').value; $$('span', starsInput).forEach((s,i)=>{ s.classList.toggle('active', i < n); }); }
+    syncStarsFromHidden();
+
+    $('#reviewForm').addEventListener('submit', async (e)=>{
+      e.preventDefault(); if(!currentId) return;
+      const user = $('#reviewUser').value.trim();
+      const comment = $('#reviewComment').value.trim();
+      const rating = +$('#reviewRating').value || 5;
+      if(!user || !comment){ alert('Completa tu nombre y comentario.'); return; }
+
+      // Imagen (opcional): convertimos a DataURL para demo local
+      const file = $('#reviewPhoto').files[0];
+      let photo = '';
+      if(file){ photo = await fileToDataUrl(file); }
+
+      const r = data.find(x=>x.id===currentId);
+      r.reviews.push({ user, rating, comment, photo, ts: Date.now() });
+      saveData(data);
+
+      // Limpiar form
+      $('#reviewUser').value=''; $('#reviewComment').value=''; $('#reviewPhoto').value=''; $('#reviewRating').value='5'; syncStarsFromHidden();
+
+      // Re-render
+      renderReviews(r); renderCards();
+    });
+
+    function fileToDataUrl(file){ return new Promise((res,rej)=>{ const reader=new FileReader(); reader.onload=()=>res(reader.result); reader.onerror=rej; reader.readAsDataURL(file); }); }
+
+    function escapeHtml(str){ return str.replace(/[&<>"]+/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[s])); }
+
+    // ---------- Inicializar
+    renderCards();
+  </script>
+</body>
+</html>
